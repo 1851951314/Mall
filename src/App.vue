@@ -1,9 +1,9 @@
 <template>
   <div id="app">
-    <keep-alive>
+    <keep-alive exclude="Detail">
       <router-view />
     </keep-alive>
-    <main-tab-bar />
+    <main-tab-bar v-show="$route.name !== 'detail'" />
   </div>
 </template>
 
