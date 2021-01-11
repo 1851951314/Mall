@@ -44,14 +44,9 @@ export default {
   },
   methods: {
     loadImg() {
-      if (++this.counter === this.imagesLength) {
+      if (++this.counter === this.detailInfo.detailImage[0].list.length) {
         this.$emit("loadImgEvent");
       }
-    },
-  },
-  watch: {
-    detailInfo() {
-      this.imagesLength = this.detailInfo.detailImage[0].list.length;
     },
   },
 };

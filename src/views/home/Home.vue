@@ -41,14 +41,15 @@ import NavBar from "components/common/navbar/NavBar";
 import Scroll from "components/common/scroll/Scroll";
 import TabControl from "components/content/tabControl/TabControl.vue";
 import GoodsList from "components/content/goods/GoodsList.vue";
-import BackTop from "components/content/backTop/BackTop.vue";
 
 import { debounce } from "common/utils.js";
+import { backTopMixin } from "common/mixin";
 
 import { getHomeMultidata, getHomeGoods } from "network/home.js";
 
 export default {
   name: "Home",
+  mixins: [backTopMixin],
   data() {
     return {
       banners: [],
@@ -59,10 +60,10 @@ export default {
         sell: { page: 0, list: [] },
       },
       currentType: "pop",
-      isShowBackTop: false,
       tabOffsetTop: 0,
       isTabFixed: false,
       saveY: 0,
+      itemImgListener: null,
     };
   },
   components: {
@@ -73,7 +74,6 @@ export default {
     Scroll,
     GoodsList,
     TabControl,
-    BackTop,
   },
   created() {
     this.getHomeMultidata();
@@ -84,16 +84,20 @@ export default {
   mounted() {
     // 1.图片加载完成的事件监听
     const refresh = debounce(this.$refs.scroll.refresh, 20);
-    this.$bus.$on("itemImageLoad", () => {
+    this.itemImgListener = () => {
       refresh();
-    });
+    };
+    this.$bus.$on("itemImageLoad", this.itemImgListener);
   },
   activated() {
     this.$refs.scroll.scrollTo(0, this.saveY);
     this.$refs.scroll.refresh();
   },
   deactivated() {
+    // 1.保存Y值
     this.saveY = this.$refs.scroll.getScrollY();
+    // 2.取消全局事件的监听
+    this.$bus.$off("itemImageLoad", this.itemImgListener);
   },
   computed: {
     showGoods() {
@@ -118,12 +122,9 @@ export default {
       // 所有组件都有一个属性：$el，用于获取组件中的元素
       this.tabOffsetTop = this.$refs.tabControl2.$el.offsetTop;
     },
-    backClick() {
-      this.$refs.scroll.scrollTo(0, 0);
-    },
     contenScroll(position) {
       // 1.判断BackTop是否显示
-      this.isShowBackTop = position.y < -1000;
+      this.listenShowBackTop(position);
       // 2.决定tabControl是否吸顶(position: fixed)
       this.isTabFixed = position.y < -this.tabOffsetTop;
     },

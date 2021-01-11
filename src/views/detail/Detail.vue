@@ -1,7 +1,16 @@
 <template>
   <div class="detail" v-if="Object.keys(commentInfo).length !== 0">
-    <detail-nav-bar class="detail-nav" />
-    <scroll class="content" ref="scroll">
+    <detail-nav-bar
+      class="detail-nav"
+      @titleClick="titleClick"
+      ref="detailNavBar"
+    />
+    <scroll class="content" ref="scroll" @scroll="contentScroll" :probeType="3">
+      <ul>
+        <li v-for="item in $store.state.cartList" :key="item.iid">
+          {{ item }}
+        </li>
+      </ul>
       <detail-swiper :top-images="topImages" />
       <detail-base-info :goods="goods" />
       <detail-shop-info :shop="shop" />
@@ -9,9 +18,12 @@
         :detail-info="detailInfo"
         @loadImgEvent="loadImgEvent"
       />
-      <detail-param-info :param-info="paramInfo" />
-      <detail-comment-info :comment-info="commentInfo" />
+      <detail-param-info ref="params" :param-info="paramInfo" />
+      <detail-comment-info ref="comment" :comment-info="commentInfo" />
+      <goods-list ref="recommend" :goods="recommend" />
     </scroll>
+    <detail-bottom-bar @addCart="addToCart" />
+    <back-top @click.native="backClick" v-show="isShowBackTop" />
   </div>
 </template>
 
@@ -23,13 +35,25 @@ import DetailShopInfo from "./childComps/DetailShopInfo.vue";
 import DetailGoodsInfo from "./childComps/DetailGoodsInfo.vue";
 import DetailParamInfo from "./childComps/DetailParamInfo.vue";
 import DetailCommentInfo from "./childComps/DetailCommentInfo.vue";
+import DetailBottomBar from "./childComps/DetailBottomBar.vue";
 
 import Scroll from "components/common/scroll/Scroll.vue";
+import GoodsList from "components/content/goods/GoodsList.vue";
 
-import { getDetail, Goods, Shop, GoodsParams } from "network/detail";
+import { debounce } from "common/utils";
+import { backTopMixin } from "common/mixin";
+
+import {
+  getDetail,
+  Goods,
+  Shop,
+  GoodsParams,
+  getRecommend,
+} from "network/detail";
 
 export default {
   name: "Detail",
+  mixins: [backTopMixin],
   data() {
     return {
       iid: null,
@@ -39,6 +63,10 @@ export default {
       detailInfo: {},
       paramInfo: {},
       commentInfo: {},
+      recommend: [],
+      itemImgListener: null,
+      themeTopYs: [],
+      currentIndex: 0,
     };
   },
   components: {
@@ -49,12 +77,13 @@ export default {
     DetailGoodsInfo,
     DetailParamInfo,
     DetailCommentInfo,
+    DetailBottomBar,
     Scroll,
+    GoodsList,
   },
   created() {
     this.iid = this.$route.params.iid;
     getDetail(this.iid).then((res) => {
-      console.log(res);
       const data = res.result;
       // 1.获取顶部的轮播图数据
       this.topImages = data.itemInfo.topImages;
@@ -77,11 +106,58 @@ export default {
       if (data.rate.cRate !== 0) {
         this.commentInfo = data.rate.list;
       }
+      // 7.请求推荐数据
+      getRecommend().then((res) => {
+        this.recommend = res.data.list;
+      });
     });
+  },
+  updated() {
+    const refresh = debounce(this.$refs.scroll.refresh, 20);
+    this.itemImgListener = () => {
+      refresh();
+    };
+    this.$bus.$on("itemImageLoad", this.itemImgListener);
+  },
+  destroyed() {
+    this.$bus.$off("itemImageLoad", this.itemImgListener);
   },
   methods: {
     loadImgEvent() {
+      this.themeTopYs.push(0);
+      this.themeTopYs.push(-this.$refs.params.$el.offsetTop + 49);
+      this.themeTopYs.push(-this.$refs.comment.$el.offsetTop + 49);
+      this.themeTopYs.push(-this.$refs.recommend.$el.offsetTop + 49);
       this.$refs.scroll.refresh();
+    },
+    titleClick(index) {
+      this.$refs.scroll.scrollTo(0, this.themeTopYs[index], 500);
+    },
+    contentScroll(position) {
+      this.listenShowBackTop(position);
+
+      if (position.y <= this.themeTopYs[3]) {
+        this.currentIndex = 3;
+      } else if (position.y <= this.themeTopYs[2]) {
+        this.currentIndex = 2;
+      } else if (position.y <= this.themeTopYs[1]) {
+        this.currentIndex = 1;
+      } else {
+        this.currentIndex = 0;
+      }
+      this.$refs.detailNavBar.currentIndex = this.currentIndex;
+    },
+    addToCart() {
+      // 1.获取购物车需要展示的信息
+      const product = {};
+      product.image = this.topImages[0];
+      product.title = this.goods.title;
+      product.desc = this.goods.desc;
+      product.price = this.goods.realPrice;
+      product.iid = this.iid;
+
+      // 2.将商品添加到购物车里
+      this.$store.commit("addCart", product);
     },
   },
 };

@@ -39,9 +39,6 @@ export default {
       },
     },
   },
-  mounted() {
-    console.log(this.commentInfo);
-  },
   filters: {
     showDate(value) {
       //将时间戳转换成date对象
