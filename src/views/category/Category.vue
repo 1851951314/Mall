@@ -122,7 +122,6 @@ export default {
       probeType: 3,
     });
     bs.on("scroll", (position) => {
-      console.log(position);
     });
     bs.on("pullingUp", () => {});
   },
