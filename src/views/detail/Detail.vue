@@ -38,6 +38,8 @@ import GoodsList from "components/content/goods/GoodsList.vue";
 import { debounce } from "common/utils";
 import { backTopMixin } from "common/mixin";
 
+import { mapActions } from "vuex";
+
 import {
   getDetail,
   Goods,
@@ -118,6 +120,7 @@ export default {
     this.$bus.$off("itemImageLoad", this.itemImgListener);
   },
   methods: {
+    ...mapActions(["addCart"]),
     loadImgEvent() {
       this.themeTopYs.push(0);
       this.themeTopYs.push(-this.$refs.params.$el.offsetTop + 49);
@@ -152,7 +155,12 @@ export default {
       product.iid = this.iid;
 
       // 2.将商品添加到购物车里
-      this.$store.dispatch("addCart", product);
+      // this.$store.dispatch("addCart", product).then((res) => {
+      //   console.log(res);
+      // });
+      this.addCart(product).then((res) => {
+        this.$toast.show(res);
+      });
     },
   },
 };
